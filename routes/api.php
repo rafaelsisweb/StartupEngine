@@ -13,23 +13,44 @@ use Illuminate\Http\Request;
 |
 */
 
-Route::middleware('auth:api')->get('/user', function (Request $request) {
-    return $request->user();
-});
+//Analytics
+Route::get('/analytics/events/{type}', 'APIController@getEvents');
+Route::get('/analytics/events/{type}/{key}', 'APIController@getEventsWithKey');
+Route::get('/analytics/events/{type}/{key}/{value}', 'APIController@getEventsByKeyAndValue');
+Route::get('/analytics/event/', 'APIController@saveEvent');
+Route::post('/analytics/event/', 'APIController@saveEvent');
 
-// Traffic
-Route::get('/v1/traffic', 'APIController@getTraffic'); // Get all traffic [DONE]
-Route::get('/v1/traffic/path/{path}', 'APIController@getTraffic'); // Get traffic stats for a particular path [DONE]
-Route::get('/v1/traffic/campaign/{campaign}', 'APIController@getTrafficForCampaign'); // Get all traffic for pages associated with a campaign [DONE]
+//Pages
+Route::get('/page/{slug}', 'APIController@getPage');
+Route::get('/page/{slug}/random', 'APIController@getRandomPageVariation');
+Route::get('/random/', 'APIController@getRandomItem');
 
-// Events
-Route::get('/v1/events', 'APIController@getEvents'); // Lists all events (interactions such as clicks, shares, etc) [DONE]
-Route::get('/v1/events/type/{type}', 'APIController@getEventsByType'); // Lists all events of a specific type [DONE]
+//Content
+Route::get('content/item', 'APIController@getItem');
+Route::get('content/items', 'APIController@getItems');
 
-// Content
-Route::get('/v1/content/type/{type}', 'APIController@getContentByType'); // List all content of a specified type (i.e. campaign, page, help, landing) [DONE]
-Route::get('/v1/content/campaign/{campaign}', 'APIController@getContentByCampaign'); // List content (pages) for a certain campaign [DONE]
-Route::get('/v1/content/campaign/{campaign}/type/{type}', 'APIController@getContentByCampaign'); // List specified content of a certain type for a certain campaign [DONE]
+//Search
+Route::get('/search/', 'APIController@search');
 
-// Perform Raw Analytics Query
-Route::get('/v1/analytics/query', 'APIController@performQuery'); // Perform a manual query on the Google Analytics API
+//Stripe
+Route::get('stripe/products/', 'APIController@getStripeProducts');
+Route::get('stripe/new/product/', 'APIController@createProduct');
+Route::post('stripe/new/product/', 'APIController@createProduct');
+Route::get('stripe/new/product/plan', 'APIController@createProductPlan');
+Route::post('stripe/new/product/plan', 'APIController@createProductPlan');
+Route::get('subscriptions/create', 'APIController@createSubscription');
+Route::get('stripe/plans/', 'APIController@getStripePlans');
+Route::get('invoices/user/{id}', 'APIController@getInvoices');
+
+//Github
+Route::get('repo/github/json/{filepath?}', 'GithubController@json')->where('filepath', '(.*)');
+Route::get('repo/github/raw/{filepath?}', 'GithubController@raw')->where('filepath', '(.*)');
+Route::get('repo/github/info/{filepath?}', 'GithubController@info')->where('filepath', '(.*)');
+
+//Modules
+foreach (Module::enabled() as $module){
+    $file = '/app/Modules/'.$module['name'].'/Http/Routes/api.php';
+    if (file_exists($file)){
+        include $file;
+    }
+}

@@ -2,15 +2,30 @@
 
 namespace App;
 
+use Laravel\Cashier\Billable;
+use Laravel\Passport\HasApiTokens;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use OwenIt\Auditing\Auditable;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Contracts\UserResolver;
+use Illuminate\Foundation\Auth\User as AuthUser;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Permission\Traits\HasRoles;
 
-class User extends Authenticatable
+class User extends AuthUser implements AuditableContract, UserResolver
 {
+
+    use Billable;
+
+    use HasRoles;
+
+    use Auditable;
+
     use Notifiable;
 
-    protected $connection = 'pgsql';
-    protected $table = 'users';
+    use SoftDeletes;
+
+    use HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -18,7 +33,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'auth0id', 'name', 'email', 'password', 'given_name', 'family_name', 'locale', 'gender', 'picture', 'picture_large', 'birthday',
+        'name', 'email', 'password',
     ];
 
     /**
@@ -29,4 +44,57 @@ class User extends Authenticatable
     protected $hidden = [
         'password', 'remember_token',
     ];
+
+    /**
+     * Attributes to include in the Audit.
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'name',
+        'email',
+        'password',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
+    /**
+     * Auditable events.
+     *
+     * @var array
+     */
+    protected $auditableEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
+
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function resolveId()
+    {
+        return \Auth::check() ? \Auth::user()->getAuthIdentifier() : null;
+    }
+
+    public function stripeCustomer($token = null)
+    {
+        \Stripe\Stripe::setApiKey(getStripeKeys()["secret"]);
+        if ($token == null) {
+            return \Stripe\Customer::retrieve($this->stripe_id);
+
+        } else {
+
+            $customer = \Stripe\Customer::create(array(
+                "description" => "Customer for $this->email",
+                "source" => "$token" // obtained with Stripe.js
+            ));
+
+            return $customer;
+        }
+    }
+
 }

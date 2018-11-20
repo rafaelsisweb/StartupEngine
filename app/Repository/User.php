@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Repository;
 
 use Auth0\Login\Contract\Auth0UserRepository;
@@ -21,79 +22,20 @@ class User implements Auth0UserRepository {
     }
 
     protected function upsertUser($profile) {
-
         $user = \App\User::where("auth0id", $profile['user_id'])->first();
 
-        $user = \App\User::updateOrCreate(
-            ['auth0id' => $profile['user_id']],
-            [
-                'auth0id' => $profile['user_id'],
-                'picture' => $profile['picture'],
-                'name' => $profile['name'],
-            ]
-        );
-
-        if(isset($profile['email'])) {
-            $user = \App\User::updateOrCreate(
-                ['auth0id' => $profile['user_id']],
-                [
-                    'email' => $profile['email'],
-                ]
-            );
+        if ($user === null) {
+            // If not, create one
+            $user = new \App\User();
+            $user->email = $profile['email']; // you should ask for the email scope
+            $user->auth0id = $profile['user_id'];
+            $user->name = $profile['name']; // you should ask for the name scope
+            $user->save();
         }
 
-        if(isset($profile['locale'])) {
-            $user = \App\User::updateOrCreate(
-                ['auth0id' => $profile['user_id']],
-                [
-                    'locale' => $profile['locale'],
-                ]
-            );
-        }
-
-        if(isset($profile['birthday'])) {
-            $user = \App\User::updateOrCreate(
-                ['auth0id' => $profile['user_id']],
-                [
-                    'birthday' => $profile['birthday'],
-                ]
-            );
-        }
-
-        if(isset($profile['given_name'])) {
-            $user = \App\User::updateOrCreate(
-                ['auth0id' => $profile['user_id']],
-                [
-                    'given_name' => $profile['given_name'],
-                ]
-            );
-        }
-
-        if(isset($profile['family_name'])) {
-            $user = \App\User::updateOrCreate(
-                ['auth0id' => $profile['user_id']],
-                [
-                    'family_name' => $profile['family_name'],
-                ]
-            );
-        }
-
-        if(isset($profile['picture_large'])) {
-            $user = \App\User::updateOrCreate(
-                ['auth0id' => $profile['user_id']],
-                [
-                    'picture_large' => $profile['picture_large'],
-                ]
-            );
-        }
-
-        if(isset($profile['gender'])) {
-            $user = \App\User::updateOrCreate(
-                ['auth0id' => $profile['user_id']],
-                [
-                    'gender' => $profile['gender'],
-                ]
-            );
+        if(($user->photo_url == null or $user->photo_url == '') && $profile['picture']) {
+            $user->photo_url = $profile['picture']; // you should ask for the name scope
+            $user->save();
         }
 
         return $user;

@@ -1,56 +1,134 @@
-@extends('layouts.webslides-errors')
+@extends('layouts.app')
 
-@section('title')Error
+@section('title')
+    Login
 @endsection
 
 @section('meta')
-    <meta name="description" content="Error">
+    <meta name="description" content="<?php echo setting('admin.description') ?>">
 @endsection
 
 @section('styles')
     <style>
-        header {
-            height:100vh !important; z-index:-2 !important;
+        .card-header {
+            width: 100% !important;
+            min-width: 100% !important;
+            position: relative !important;
+            left: 0px !important;
+            top: 0px !important;
         }
-        .sentry-error-embed {
-            margin-top:10% !important;
+
+        .card {
+            background: #fff !important;
+        }
+
+        #gradient {
+            display: none;
+        }
+
+        .card-signup {
+            /*background: orangered !important;*/
+            background: linear-gradient(45deg, #9360ff, #4286ff) !important;
+        }
+
+        .card-signup .card-body i, .card-signup h4 {
+            color: #fff !important;
+        }
+
+        #signin {
+            color: #444 !important;
+        }
+
+        .bg-gradient-light {
+            background: linear-gradient(-45deg, rgba(255, 235, 225, 0.71), #e7ecff);
+        }
+
+        .checkbox label::before, .checkbox label::after {
+            background: #fff;
+        }
+
+        .input-group-addon {
+            padding-right: 20px !important;
+            background: rgba(0, 0, 0, 0.3) !important;
+        }
+
+        input {
+            -webkit-text-fill-color: #333 !important;
+            -webkit-box-shadow: 0 0 0 30px white inset !important;
+        }
+
+        .help-block {
+            color: #fff !important;
+            text-align: center;
+            margin-bottom: 15px;
+            max-width: 75%;
+            margin-top: -25px;
+        }
+
+        .shadowed {
+            -webkit-filter: drop-shadow(0px 6px 3px rgba(15, 15, 150, 0.15)) !important;
+            filter: url(#drop-shadow);
+            -ms-filter: "progid:DXImageTransform.Microsoft.Dropshadow(OffX=0, OffY=6, Color='#444')";
+            filter: "progid:DXImageTransform.Microsoft.Dropshadow(OffX=0, OffY=6, Color='#444')";
+        }
+
+        @media (max-width: 991px) {
+            .row {
+                margin-top: 25px !important;
+                margin-left: 10px;
+                margin-right: 10px;
+            }
+        }
+
+        .btn-icon:hover, #signin:hover {
+            transform: scale(1.1); /* Equal to scaleX(0.7) scaleY(0.7) */
+        }
+
+        .input-group input {
+            border-radius: 0px 4px 4px 0px;
+        }
+
+        .input-group-addon {
+            border-radius: 4px 0px 0px 4px;
         }
     </style>
+
 @endsection
 
+
 @section('content')
-    <article>
-        <div class="content" style="">
-        @unless(empty($sentryID))
-            <!-- Sentry JS SDK 2.1.+ required -->
-                <script src="https://cdn.ravenjs.com/3.3.0/raven.min.js"></script>
+    <body class="index-page sidebar-collapse bg-gradient-light" style="height:100vh;">
+    <div class="container">
+        <div class="row" style="margin-top:5%;">
 
-                <script>
-                    Raven.showReportDialog({
-                        eventId: '{{ $sentryID }}',
+            <div class="card card-signup bg-gradient">
 
-                        // use the public DSN (dont include your secret!)
-                        dsn: '<?php echo config('app.SENTRY_PUBLIC_DSN'); ?>'
-                    });
-                </script>
-            @endunless
-        </div>
-        <section class="">
-            <!-- Overlay/Opacity: [class*="bg-"] > .background.dark or .light -->
-            <span class="background" ></span>
-            <!--.wrap = container width: 90% -->
-            <div class="wrap zoomIn" align="center" style="padding:75px 10%;min-width:300px;">
-                <h1 style="margin-bottom:15px;">
-                    <strong>Uh Oh!</strong>
-                </h1>
-                <div class="text-subtitle"><p>Page not found.</p></div>
-                <p>
-                    <a href="/" class="button ga-track" data-ga-text="Take me to the homepage." title="Take me to the homepage.">
-                        Take me to the homepage.
-                    </a>
-                </p>
+                {{ csrf_field() }}
+                <div class="header text-center">
+                    @if(setting('site.logo') !== null)
+                        <div align="center" style="width:100%;">
+                            <img src="{{ setting('site.logo') }}" style="max-height:70px;margin-bottom:15px;"
+                                 class="shadowed"/>
+                        </div>
+                    @endif
+                    <h4 style="font-weight:600 !important;" class="title title-up">Error 404</h4><h4>Page Not Found</h4>
+                </div>
+
+
             </div>
-            <!-- .end .wrap -->
-        </section>
-    </article>
+        </div>
+    </div>
+    <div align="center" style="margin-top:15px;">
+        <a href="/" class="btn btn-link">
+            @if(setting('site.name') !== null)
+                Back to {{setting('site.name')}}
+            @else
+                Back to {{ config('app.url') }}
+            @endif
+        </a>
+        @if(!\Auth::user())
+            <a href="/login" class="btn btn-link">Sign In</a>
+        @endif
+    </div>
+    </body>
 @endsection

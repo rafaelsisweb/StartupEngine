@@ -1,16 +1,17 @@
 {
-    "name": "SmartStartup",
-    "description": "A platform for launching startups.",
+    "name": "StartupEngine",
+    "description": "A beautiful, open-source, free CMS for startups.",
     "keywords": [
         "CMS",
         "Blog",
+        "Startup",
         "Marketing",
         "Laravel",
-        "Contentful"
+        "Framework"
     ],
-    "website": "https://sitepress.herokuapp.com",
-    "repository": "https://github.com/luckyrabbitllc/SitePress",
-    "logo": "https://images.contentful.com/x5o3atz1wqhm/2PWSbcsefYImQyMuqcIuGi/5efaa2c98a4819ef729885a7c3aa381c/App_Icon_2x.png",
+    "website": "https://startupengine.herokuapp.com",
+    "repository": "https://github.com/luckyrabbitllc/startupengine",
+    "logo": "https://raw.githubusercontent.com/luckyrabbitllc/startupengine/master/storage/docs/images/logo.png",
     "success_url": "/",
     "scripts": {
         "post-root-package-install": [
@@ -22,12 +23,15 @@
         "post-install-cmd": [
             "Illuminate\\Foundation\\ComposerScripts::postInstall",
             "php artisan optimize",
-            "php artisan migrate --force",
-            "php artisan command:SyncCredentials"
+            "php artisan migrate:refresh --seed --force",
+            "php artisan passport:install",
+            "php artisan command:SyncGit default"
         ],
         "post-update-cmd": [
-            "php artisan migrate --force",
-            "php artisan command:SyncCredentials"
+            "php artisan migrate --force"
+        ],
+        "postdeploy": [
+            "php artisan migrate --force"
         ]
     },
     "env": {
@@ -38,6 +42,14 @@
         "API_SECRET": {
             "description": "A secret key for accessing the API.",
             "generator": "secret"
+        },
+        "DB_CONNECTION": {
+            "description": "Use Heroku's pgsql by default.",
+            "value": "pgsql"
+        },
+        "APP_PLATFORM": {
+            "description": "Don't change this if you're deploying to Heroku.",
+            "value": "heroku"
         }
     },
     "formation": {

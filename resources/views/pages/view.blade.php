@@ -1,42 +1,76 @@
-@extends('layouts.webslides')
+@if(View::exists('theme.pages.'.$page->slug.'.index'))
+    @include('theme.pages.'.$page->slug.'.index')
+@elseif(file_exists("/resources/views/theme/pages/$page->slug/index.html"))
+    {!! file_get_contents(("/resources/views/theme/pages/$page->slug/index.html")) !!}
+@else
 
-@section('title')<?php echo $page->getTitle(); ?>@endsection
+    @extends('layouts.page')
 
-@section('meta')
-<meta name="description" content="<?php echo $page->getDescription(); ?>">
-<!-- SOCIAL CARDS (ADD YOUR INFO) -->
+    @section('title')
+        <?php echo $page->title; ?>
+    @endsection
 
-<!-- FACEBOOK -->
-<meta property="og:url" content="{{ \Request::url() }}"> <!-- YOUR URL -->
-<meta property="og:type" content="article">
-<meta property="og:title" content="<?php echo $page->getTitle(); ?>"> <!-- EDIT -->
-<meta property="og:description" content="<?php echo $page->getDescription(); ?>"> <!-- EDIT -->
-<meta property="og:updated_time" content="{{ \Carbon\Carbon::now()->toFormattedDateString() }}"> <!-- EDIT -->
-<meta property="og:image" content="<?php if($page->getFeaturedImage() !== null) { echo $page->getFeaturedImage()->getFile()->getUrl(); } ?>"> <!-- EDIT -->
+    @section('meta')
+    <meta name="description" content="<?php echo $page->meta_description; ?>">
+    <!-- SOCIAL CARDS (ADD YOUR INFO) -->
 
-<!-- TWITTER -->
-<meta name="twitter:card" content="<?php if($page->getFeaturedImage() !== null) { echo $page->getFeaturedImage()->getFile()->getUrl(); } ?>">
-<meta name="twitter:site" content="@webslides"> <!-- EDIT -->
-<meta name="twitter:creator" content="@jlantunez"> <!-- EDIT -->
-<meta name="twitter:title" content="<?php echo $page->getTitle(); ?>"> <!-- EDIT -->
-<meta name="twitter:description" content="<?php echo $page->getDescription(); ?>"> <!-- EDIT -->
-<meta name="twitter:image" content="<?php if($page->getFeaturedImage() !== null) { echo $page->getFeaturedImage()->getFile()->getUrl(); } ?>"> <!-- EDIT -->
-@endsection
+    <!-- FACEBOOK -->
+    <meta property="og:url" content="{{ \Request::url() }}"> <!-- YOUR URL -->
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="<?php echo $page->title; ?>"> <!-- EDIT -->
+    <meta property="og:description" content="<?php echo $page->meta_description; ?>"> <!-- EDIT -->
+    <meta property="og:updated_time" content="{{ \Carbon\Carbon::now()->toFormattedDateString() }}"> <!-- EDIT -->
+    <meta property="og:image" content="<?php if($page->image !== null) { echo $page->image; } ?>"> <!-- EDIT -->
 
-@section('styles')
-    <?php if($page->getCss() !== null) { echo $page->getCss(); } ?>
-@endsection
+    <!-- TWITTER -->
+    <meta name="twitter:card" content="<?php if($page->image !== null) { echo $page->image; } ?>">
+    <meta name="twitter:site" content="@webslides"> <!-- EDIT -->
+    <meta name="twitter:creator" content="{{ setting('site.twitter_account') }}"> <!-- EDIT -->
+    <meta name="twitter:title" content="<?php echo $page->title; ?>"> <!-- EDIT -->
+    <meta name="twitter:description" content="<?php echo $page->meta_description; ?>"> <!-- EDIT -->
+    <meta name="twitter:image" content="<?php if($page->image !== null) { echo $page->image; } ?>"> <!-- EDIT -->
+    @endsection
 
-@section('content')
-<article>
-    <?php $count = 1; ?>
-    @foreach($page->getSections() as $section)
-        <?php $contentType = $section->getType(); ?>
-        @include('sections.'.strtolower($contentType))
-        <?php $count = $count + 1; ?>
-        <?php echo $section->getHtml(); ?>
-    @endforeach
-    <?php if($page->getHtml() !== null) { echo $page->getHtml(); } ?>
-    @include('components.comments')
-</article>
-@endsection
+    @section('styles')
+        @if(View::exists('theme.pages.'.$page->slug.'.css'))
+            @include('theme.pages.'.$page->slug.'.css')
+        @elseif(file_exists(base_path()."/resources/views/theme/pages/$page->slug/css.html"))
+            {!! file_get_contents(base_path()."/resources/views/theme/pages/$page->slug/css.html") !!}
+        @elseif(isset($page->css))
+            {!! $page->css !!}
+        @endif
+
+    @endsection
+
+    @section('content')
+
+        @if(View::exists('theme.pages.'.$page->slug.'.header'))
+            @include('theme.pages.'.$page->slug.'.header')
+        @elseif(file_exists(base_path()."/resources/views/theme/pages/$page->slug/header.html"))
+            {!! file_get_contents(base_path()."/resources/views/theme/pages/$page->slug/header.html") !!}
+        @endif
+
+        @if(View::exists('theme.pages.'.$page->slug.'.body'))
+            @include('theme.pages.'.$page->slug.'.body')
+        @elseif(file_exists(base_path()."/resources/views/theme/pages/$page->slug/body.html"))
+            {!! file_get_contents(base_path()."/resources/views/theme/pages/$page->slug/body.html") !!}
+        @elseif(isset($page->html))
+            {!! $page->html !!}
+        @endif
+
+        @if(View::exists('theme.pages.'.$page->slug.'.scripts'))
+            @include('theme.pages.'.$page->slug.'.scripts')
+        @elseif(file_exists(base_path()."/resources/views/theme/pages/$page->slug/scripts.html"))
+            {!! file_get_contents(base_path()."/resources/views/theme/pages/$page->slug/scripts.html") !!}
+        @elseif(isset($page->scripts))
+            {!! $page->scripts !!}
+        @endif
+
+        @if(View::exists('theme.pages.'.$page->slug.'.footer'))
+            @include('theme.pages.'.$page->slug.'.footer')
+        @elseif(file_exists(base_path()."/resources/views/theme/pages/$page->slug/footer.html"))
+            {!! file_get_contents(base_path()."/resources/views/theme/pages/$page->slug/footer.html") !!}
+        @endif
+
+    @endsection
+@endif

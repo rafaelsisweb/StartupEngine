@@ -4,53 +4,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Application Settings
-    |--------------------------------------------------------------------------
-    */
-
-    'APP_INSTALLED' => env('APP_INSTALLED', 'FALSE'),
-    'logo' => env('APP_LOGO', '/images/logo.png'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | 3rd Party Credentials
-    |--------------------------------------------------------------------------
-    */
-
-    'CONTENTFUL_MANAGEMENT_TOKEN' => env('CONTENTFUL_MANAGEMENT_TOKEN', NULL),
-    'CONTENTFUL_SPACE_ID' => env('CONTENTFUL_SPACE_ID', NULL),
-    'CONTENTFUL_API_KEY' => env('CONTENTFUL_API_KEY', NULL),
-
-    'ENABLE_GOOGLE_ANALYTICS' => env('ENABLE_GOOGLE_ANALYTICS', NULL),
-    'GOOGLE_ANALYTICS' => env('GOOGLE_ANALYTICS'),
-    'GOOGLE_ANALYTICS_VIEW_ID' => env('GOOGLE_ANALYTICS_VIEW_ID'),
-
-    'ENABLE_SENTRY' => env('ENABLE_SENTRY', NULL),
-    'SENTRY_PUBLIC_DSN' => env('SENTRY_PUBLIC_DSN', NULL),
-
-    'ENABLE_INTERCOM' => env('ENABLE_INTERCOM', NULL),
-    'INTERCOM_APP_ID' => env('INTERCOM_APP_ID', NULL),
-
-    'ENABLE_DRIFT' => env('ENABLE_DRIFT', NULL),
-    'DRIFT_ID' => env('DRIFT_ID', NULL),
-
-    'ENABLE_MIXPANEL' => env('ENABLE_MIXPANEL', NULL),
-    'MIXPANEL_ID' => env('MIXPANEL_ID', NULL),
-
-    'ENABLE_MAILCHIMP' => env('ENABLE_MAILCHIMP', FALSE),
-    'MAILCHIMP_APIKEY' => env('MAILCHIMPAPI_KEY', NULL),
-
-    /*
-    |--------------------------------------------------------------------------
     | Application Name
     |--------------------------------------------------------------------------
     |
     | This value is the name of your application. This value is used when the
     | framework needs to place the application's name in a notification or
     | any other location as required by the application or its packages.
+    |
     */
 
-    'name' => env('APP_NAME', 'SitePress'),
+    'name' => env('APP_NAME', 'Startup Engine'),
 
     /*
     |--------------------------------------------------------------------------
@@ -89,7 +52,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://127.0.0.1:8000'),
+    'url' => env('APP_URL', 'http://localhost'),
 
     /*
     |--------------------------------------------------------------------------
@@ -204,18 +167,11 @@ return [
         /*
          * Package Service Providers...
          */
-        Laravel\Tinker\TinkerServiceProvider::class,
-        Barryvdh\Debugbar\ServiceProvider::class,
-        Contentful\Laravel\ContentfulServiceProvider::class,
-        Indal\Markdown\MarkdownServiceProvider::class,
-        Auth0\Login\LoginServiceProvider::class,
-        Spatie\Analytics\AnalyticsServiceProvider::class,
-        ConsoleTVs\Charts\ChartsServiceProvider::class,
-        Sentry\SentryLaravel\SentryLaravelServiceProvider::class,
-        Spatie\Newsletter\NewsletterServiceProvider::class,
-        Laravel\Scout\ScoutServiceProvider::class,
-        Flugg\Responder\ResponderServiceProvider::class,
-        BC\Laravel\DropboxDriver\ServiceProvider::class,
+        //Way\Generators\GeneratorsServiceProvider::class,
+        //Xethron\MigrationsGenerator\MigrationsGeneratorServiceProvider::class,
+        Caffeinated\Modules\ModulesServiceProvider::class,
+        Appstract\Meta\MetaServiceProvider::class,
+        \Conner\Tagging\Providers\TaggingServiceProvider::class,
 
         /*
          * Application Service Providers...
@@ -274,15 +230,23 @@ return [
         'URL' => Illuminate\Support\Facades\URL::class,
         'Validator' => Illuminate\Support\Facades\Validator::class,
         'View' => Illuminate\Support\Facades\View::class,
-        'Debugbar' => Barryvdh\Debugbar\Facade::class,
-        'Markdown' => Indal\Markdown\Facade::class,
-        'Auth0' => Auth0\Login\Facade\Auth0::class,
-        'Analytics' => Spatie\Analytics\AnalyticsFacade::class,
-        'Charts' => ConsoleTVs\Charts\Facades\Charts::class,
-        'Sentry' => Sentry\SentryLaravel\SentryFacade::class,
-        'Newsletter' => Spatie\Newsletter\NewsletterFacade::class,
-        'Responder' => Flugg\Responder\Facades\Responder::class,
-
+        'Module' => Caffeinated\Modules\Facades\Module::class,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Git Repo
+    |--------------------------------------------------------------------------
+    |
+    | These values are used to pull in your templates from a git repository.
+    |
+    */
+
+    'template_git_repository' => env('TEMPLATE_GIT_REPOSITORY', 'Startup-Engine-Template'),
+    'template_git_username' => env('TEMPLATE_GIT_USERNAME', 'luckyrabbitllc'),
+    'template_git_password' => env('TEMPLATE_GIT_PASSWORD', null),
+    'template_git_branch' => env('TEMPLATE_GIT_BRANCH', 'master'),
+    'github_username' => env('GITHUB_USERNAME', null),
+    'github_password' => env('GITHUB_PASSWORD', null),
 
 ];

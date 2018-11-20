@@ -8,6 +8,8 @@
 !/storage/app/docs/*
 /storage/app/google/*
 !/storage/app/google/dummy.json
+/resources/views/theme
+resources/temp/*
 /vendor
 /.idea
 /.vagrant
@@ -16,3 +18,5 @@ Homestead.yaml
 npm-debug.log
 .env
 .DS_Store
+/app/Modules
+/storage/app/modules.json

@@ -2,107 +2,388 @@
 
 namespace App;
 
+use App\User;
+use Carbon\Carbon;
+use App\Category;
 use Illuminate\Database\Eloquent\Model;
-use Analytics;
-use Spatie\Analytics\Period;
 
 class APIResponse extends Model
 {
-    public function getPeriod($request) {
-        $days = $request->days;
-        if($days == NULL) {
-            // Default to a period of 30 days
-            $days = 30;
-            $period = Period::days(30);
+
+    public function getStripePlans($request){
+        if($request->input('product_id') !== null ){
+            $plans = getStripePlans($request->input('product_id'));
         }
         else {
-            // Set period manually if it's specified in the request
-            $period = Period::days($days);
+            $plans = getStripePlans();
         }
-        if($request->start !== NULL) {
-            // Set a start date manually if it's specified in the request
-            $start = \Carbon\Carbon::createFromFormat('m/d/Y', $request->start);
-            $end = \Carbon\Carbon::createFromFormat('m/d/Y', $request->start)->addDays($days);
-            $period = Period::create($start, $end);
-            if(!$start->isPast()) {
-                return response()->json([
-                    'status' => 'failure',
-                    'error' => 'Start date is in the future.'
-                ]);
+        return response()
+            ->json($plans);
+    }
+
+    public function getStripeProducts($request){
+        \Stripe\Stripe::setApiKey(getStripeKeys()["secret"]);
+        $products = \Stripe\Product::all(array("limit" => 100));
+        foreach($products->data as $product){
+            $item = \App\Product::where('stripe_id', '=', $product->id)->first();
+            if($item == null){
+                $item = new \App\Product();
+            }
+            $item->stripe_id = $product->id;
+            $item->name = $product->name;
+            $item->json = json_encode($product);
+            $item->save();
+        }
+        return response()
+            ->json($products);
+    }
+
+    public function createProduct($request){
+        \Stripe\Stripe::setApiKey(getStripeKeys()["secret"]);
+        $product = \Stripe\Product::create(array(
+            "name" => $request->input('name'),
+            "type" => "service"
+        ));
+        return response()
+            ->json($product);
+    }
+
+    public function createProductPlan($request){
+       $plan = createProductPlan($request);
+        return response()
+            ->json($plan);
+    }
+
+    public function createSubscription($request){
+        $user = User::find($request->input('user_id'));
+        $plan_id = $request->input('plan_id');
+        $newplan = $user->newSubscription('main', $plan_id)->create($request->input('token'));
+        \Stripe\Stripe::setApiKey(getStripeKeys()["secret"]);
+        $stripeplan = \Stripe\Plan::retrieve($plan_id);
+        $newplan->price = $stripeplan->amount;
+        $newplan->json = json_encode($stripeplan);
+        $newplan->save();
+        $event = new AnalyticEvent();
+        $event->event_type = 'subscription purchased';
+        $event->user_id = $user->id;
+        $event->user_email = $user->email;
+        $event->user_name = $user->name;
+        $event->event_data = json_encode("{\"plan_id\":$plan_id, \"amount\":'".$newplan->amount."'}");
+        $event->save();
+        return response()
+            ->json($newplan);
+    }
+
+    public function getInvoices($id){
+        $user = User::find($id);
+        \Stripe\Stripe::setApiKey(getStripeKeys()["secret"]);
+        $invoices = \Stripe\Invoice::all(array("customer" => $user->stripe_id, "limit" => 10));
+        return response()
+            ->json($invoices);
+    }
+
+    public function getItems($request)
+    {
+        $search = $request->input('s');
+        $type = $request->input('type');
+        $posttype = $request->input('post_type');
+        if($type == null){$type =  'posts'; }
+        if($type == 'posts' && $posttype == null){
+            $posttype  = 'post';
+        }
+        $limit = $request->input('limit');
+        if ($limit == null) {
+            $limit = 10;
+        }
+        $fields = 'id, status, slug';
+        if (\Schema::hasColumn($type, 'name')) {
+            $fields = $fields . ', name';
+        }
+        if (\Schema::hasColumn($type, 'title')) {
+            $fields = $fields . ', title';
+        }
+        if (\Schema::hasColumn($type, 'key')) {
+            $fields = $fields . ', key';
+        }
+        if (\Schema::hasColumn($type, 'value')) {
+            $fields = $fields . ', value';
+        }
+        if (\Schema::hasColumn($type, 'display_name')) {
+            $fields = $fields . ', display_name';
+        }
+        if (\Schema::hasColumn($type, 'type')) {
+            $fields = $fields . ', type';
+        }
+        if (\Schema::hasColumn($type, 'post_type')) {
+            $fields = $fields . ', post_type';
+        }
+        if (\Schema::hasColumn($type, 'json')) {
+            $fields = $fields . ', json';
+        }
+
+        if($request->input('tag') !== null) {
+            $tags = $request->input('tag');
+        }
+        else {
+            $tags = null;
+        }
+
+        if($request->input('excludeTag') !== null) {
+            $excludedTags = explode(',', $request->input('excludeTag'));
+        }
+        else {
+            $excludedTags = [];
+        }
+
+        if($tags !== null && $tags !== '' && $search !== null) {
+            $items = Post::select(\DB::raw($fields))
+                ->where('status', '=', 'PUBLISHED')
+                ->where('post_type', '=', $posttype)
+                ->limit($limit)
+                ->orderBy('published_at', 'desc')
+                ->where('published_at', '<', Carbon::now()->toDateTimeString())
+                ->where('title', 'ILIKE', "%$search%")
+                ->withAnyTag($tags)
+                ->withoutTags($excludedTags)
+                ->jsonPaginate();
+        }
+        elseif($tags !== null && $tags !== '' && $search == null) {
+            $items = Post::select(\DB::raw($fields))
+                ->where('status', '=', 'PUBLISHED')
+                ->where('post_type', '=', $posttype)
+                ->limit($limit)
+                ->orderBy('published_at', 'desc')
+                ->where('published_at', '<', Carbon::now()->toDateTimeString())
+                ->withAnyTag($tags)
+                ->withoutTags($excludedTags)
+                ->jsonPaginate();
+        }
+        else {
+            if(isset($search)) {
+
+                $items = Post::select(\DB::raw($fields))
+                    ->where('status', '=', 'PUBLISHED')
+                    ->where('post_type', '=', $posttype)
+                    ->where('title', 'ILIKE', "%$search%")
+                    ->limit($limit)
+                    ->orderBy('published_at', 'desc')
+                    ->where('published_at', '<', Carbon::now()->toDateTimeString())
+                    ->jsonPaginate();
+            }
+            else {
+                $items = Post::select(\DB::raw($fields))
+                    ->where('status', '=', 'PUBLISHED')
+                    ->where('post_type', '=', $posttype)
+                    ->limit($limit)
+                    ->orderBy('published_at', 'desc')
+                    ->where('published_at', '<', Carbon::now()->toDateTimeString())
+                    ->jsonPaginate();
             }
         }
-        return $period;
-    }
 
-    public function getContent($client, $type = null, $campaign = null) {
-        if($type == NULL) {
-            $type = 'page';
-        }
-        $query = (new \Contentful\Delivery\Query());
-        $query->setContentType($type);
-        if($campaign !== null) {
-            $query->setContentType($type)
-                ->setInclude(2)
-                ->where('fields.campaign.sys.contentType.sys.id', 'campaign')
-                ->where('fields.campaign.fields.slug', $campaign);
-        }
-        $results = $client->getEntries($query);
-        return response()->json([
-            'status' => 'success',
-            'source' => 'contentful',
-            'raw' => $results
-        ]);
-    }
+        /*foreach($items as $item) {
+            $item->views = count($item->views());
+        }*/
 
-    public function getTraffic($request, $path = null) {
-        $period = $this->getPeriod($request);
-        $traffic = Analytics::fetchTotalVisitorsAndPageViews($period);
-        if($path !== null) {
-            $filters = "ga:pagePath=@/$path";
-            $popular = Analytics::performQuery($period,'ga:pageviews,ga:uniquePageviews,ga:timeOnPage,ga:bounces,ga:entrances,ga:exits', ['dimensions'=>'ga:pagePath,ga:pageTitle', 'filters' => $filters, 'sort' => '-ga:pageViews']);
-        }
-        return response()->json([
-            'status' => 'success',
-            'period' => $period,
-            'source' => 'google-analytics',
-            'raw' => $traffic
-        ]);
-    }
+        //$items = $items->sortBy('views')->reverse();
 
-    public function getEvents($request, $type = null) {
-        $period = $this->getPeriod($request);
-        if($type !== null OR $request->campaign !== null) {
-            $filters = "";
-            if(isset($type)) {
-                $filters = $filters."ga:eventCategory==$type";
+        $items->transform(function ($item, $key) {
+            if (isset($item->slug)) {
+                $item->slug = $item->slug;
             }
-            if(isset($request->campaign)) {
-                if($filters !== "") { $filters = $filters.";";} // The semicolon represents the AND operator (combines filters)
-                $filters =  $filters."ga:eventLabel==$request->campaign";
+            if($item->content() !== null){
+                $item->content = $item->content();
             }
-            $events = Analytics::performQuery($period,'ga:totalEvents,ga:sessions',  ['sort'=>'ga:date', 'filters' => "$filters", 'dimensions' => 'ga:date']);
-        } else {
-            $events = Analytics::performQuery($period,'ga:totalEvents,ga:sessions',  ['sort'=>'ga:date', 'dimensions' => 'ga:date']);
-        }
-        return response()->json([
-            'status' => 'success',
-            'period' => $period,
-            'totals' => $events->totalsForAllResults,
-            'source' => 'google-analytics',
-            'raw' => $events
-        ]);
+            $item->views = count($item->views());
+            $item->user = $item->user();
+            $item->tags;
+            return $item;
+        });
+
+        //$items = $items->sortBy('views')->reverse();
+
+        //$items = $items->sortBy('views')->reverse();
+
+        $response = (json_decode(json_encode($items->toArray())));
+
+        return response()
+            ->json($response);
     }
 
-    public function performQuery($request, $metrics = 'ga:totalEvents,ga:sessions', $options = ['sort'=>'ga:date', 'dimensions' => 'ga:date']) {
-        $period = $this->getPeriod($request);
-        if($request->metrics !== null) { $metrics = $request->metrics; }
-        if($request->options !== null) { $options = $request->options; }
-        $results = Analytics::performQuery($period, $metrics, $options);
-        return response()->json([
-            'status' => 'success',
-            'period' => $period,
-            'source' => 'google-analytics',
-            'raw' => $results
-        ]);
+    public function getRandomItem($request)
+    {
+        $type = $request->input('post_type');
+        if($type == null){$type =  'posts'; }
+        $limit = $request->input('limit');
+        if ($limit == null) {
+            $limit = 10;
+        }
+        $fields = 'id, status, slug';
+        if (\Schema::hasColumn($type, 'name')) {
+            $fields = $fields . ', name';
+        }
+        if (\Schema::hasColumn($type, 'title')) {
+            $fields = $fields . ', title';
+        }
+        if (\Schema::hasColumn($type, 'key')) {
+            $fields = $fields . ', key';
+        }
+        if (\Schema::hasColumn($type, 'value')) {
+            $fields = $fields . ', value';
+        }
+        if (\Schema::hasColumn($type, 'display_name')) {
+            $fields = $fields . ', display_name';
+        }
+        if (\Schema::hasColumn($type, 'type')) {
+            $fields = $fields . ', type';
+        }
+        if (\Schema::hasColumn($type, 'post_type')) {
+            $fields = $fields . ', post_type';
+        }
+        if (\Schema::hasColumn($type, 'json')) {
+            $fields = $fields . ', json';
+        }
+
+        $ids = explode(',', $request->input('ids'));
+        $items = \DB::table($type)
+            ->select(\DB::raw($fields))
+            ->where('status', '=', 'PUBLISHED')
+            ->whereIn('id', $ids)
+            ->where('published_at', '<', Carbon::now()->toDateTimeString())
+            ->limit($limit)
+            ->orderBy('created_at')
+            ->get();
+
+        $items = collect($items->random());
+
+        if (\Schema::hasColumn($type, 'body')) {
+            $items->transform(function ($item) {
+
+                if ($item->image() !== null) {
+                    $item->image = $item->content()->body->image;
+                }
+                return $item;
+            });
+        }
+
+        $response = (json_decode(json_encode($items->toArray())));
+
+
+        return response()
+            ->json($items);
+    }
+
+    public function getItem($request)
+    {
+        $type = $request->input('type');
+
+        if ($request->input('slug') !== null) {
+            $field = "slug";
+            $slug = $request->input('slug');
+        }
+        if ($request->input('key') !== null) {
+            $field = "key";
+            $slug = $request->input('key');
+        }
+
+        $fields = 'id, status';
+
+        if (\Schema::hasColumn($type, 'slug')) {
+            $fields = $fields . ', slug';
+        }
+        if (\Schema::hasColumn($type, 'name')) {
+            $fields = $fields . ', name';
+        }
+        if (\Schema::hasColumn($type, 'title')) {
+            $fields = $fields . ', title';
+        }
+        if (\Schema::hasColumn($type, 'key')) {
+            $fields = $fields . ', key';
+        }
+        if (\Schema::hasColumn($type, 'value')) {
+            $fields = $fields . ', value';
+        }
+        if (\Schema::hasColumn($type, 'display_name')) {
+            $fields = $fields . ', display_name';
+        }
+        if (\Schema::hasColumn($type, 'type')) {
+            $fields = $fields . ', type';
+        }
+        if (\Schema::hasColumn($type, 'post_type')) {
+            $fields = $fields . ', post_type';
+        }
+        if (\Schema::hasColumn($type, 'json')) {
+            $fields = $fields . ', json';
+        }
+
+        $items = Post::select(\DB::raw($fields))
+            ->where('status', '=', 'PUBLISHED')
+            ->where($field, '=', $slug)
+            ->where('published_at', '<', Carbon::now()->toDateTimeString())
+            ->get();
+
+        $items->transform(function ($item, $key) {
+            if ($item->image() !== null) {
+                $item->image = $item->content()->body->image;
+            }
+            return $item;
+        });
+
+        $response = (json_decode(json_encode($items->toArray())));
+
+        return response()
+            ->json($response);
+    }
+
+    public function search($request)
+    {
+        $type = $request->input('type');
+        $input = $request->input('s');
+        $limit = $request->input('limit');
+        if ($limit == null) {
+            $limit = 10;
+        }
+        $fields = 'id, status, title, meta_description, slug, image';
+        $items = \DB::table($type)
+            ->select(\DB::raw($fields))
+            ->where('status', '=', 'PUBLISHED')
+            ->where('body', 'ILIKE', '%' . $input . '%')
+            ->orWhere('title', 'ILIKE', '%' . $input . '%')
+            ->orWhere('meta_description', 'ILIKE', '%' . $input . '%')
+            ->orWhere('excerpt', 'ILIKE', '%' . $input . '%')
+            ->limit($limit)
+            ->orderBy('created_at')
+            ->get();
+
+        $items->transform(function ($item, $key) {
+            $item->image = \Storage::disk('public')->url($item->image);
+            $item->slug = $item->slug;
+            return $item;
+        });
+
+        $response = (json_decode(json_encode($items->toArray())));
+
+        return response()
+            ->json($response);
+    }
+
+    public function getPage($slug)
+    {
+        $page = Page::where('slug', '=', $slug)->where('status', '=', 'ACTIVE')->firstOrFail();
+        if ($page !== null) {
+            return $page;
+        }
+    }
+
+    public function getRandomPageVariation($request, $slug)
+    {
+        $page = Page::where('slug', '=', $slug)->where('status', '=', 'ACTIVE')->firstOrFail();
+        if ($page !== null) {
+            $versions = json_decode($page->json, true)['versions'];
+            $random = $versions[rand(1, count($versions))];
+            $page->json = $random;
+            return response()
+                ->json($page);
+        }
     }
 }
